@@ -69,6 +69,8 @@ dataset_name = "Lumpen1/MadMax1.0"
 dataset = load_dataset(dataset_name, split="all")
 dataset = dataset.shuffle(seed=42)
 
+
+
 def format_chat_template(row):
     row["prompt"] = tokenizer.apply_chat_template(row["prompt"], tokenize=False)
     row["chosen"] = tokenizer.apply_chat_template(row["chosen"], tokenize=False)
@@ -79,61 +81,3 @@ def format_chat_template(row):
 dataset = dataset.map(
     format_chat_template
 )
-dataset = dataset.train_test_split(test_size=0.01)
-
-orpo_args = ORPOConfig(
-    learning_rate=8e-6,
-    beta=0.1,
-    lr_scheduler_type="linear",
-    max_length=2048,
-    max_prompt_length=1024,
-    num_train_epochs=3,
-    per_device_train_batch_size=8,
-    per_device_eval_batch_size=8,
-    gradient_accumulation_steps=4,
-    gradient_checkpointing=True,
-    optim="paged_adamw_8bit",
-    evaluation_strategy="steps",
-    eval_steps=0.2,
-    logging_steps=1,
-    save_steps=50,
-    save_total_limit=2,
-    warmup_steps=10,
-    report_to="wandb",
-    output_dir="./results/",
-)
-
-trainer = ORPOTrainer(
-    model=model,
-    args=orpo_args,
-    train_dataset=dataset["train"],
-    eval_dataset=dataset["test"],
-    peft_config=peft_config,
-    tokenizer=tokenizer,
-)
-trainer.train()
-trainer.save_model(new_model)
-
-
-# Flush memory
-del trainer, model
-gc.collect()
-torch.cuda.empty_cache()
-
-# Reload tokenizer and model
-tokenizer = AutoTokenizer.from_pretrained(base_model)
-model = AutoModelForCausalLM.from_pretrained(
-    base_model,
-    low_cpu_mem_usage=True,
-    return_dict=True,
-    torch_dtype=torch.float16,
-    device_map="auto",
-)
-model, tokenizer = setup_chat_format(model, tokenizer)
-
-# Merge adapter with base model
-model = PeftModel.from_pretrained(model, new_model)
-model = model.merge_and_unload()
-
-model.push_to_hub(new_model, use_temp_dir=False)
-tokenizer.push_to_hub(new_model, use_temp_dir=False)
