@@ -87,6 +87,7 @@ orpo_args = ORPOConfig(
     per_device_train_batch_size=8,
     per_device_eval_batch_size=8,
     gradient_accumulation_steps=8,
+    gradient_checkpointing_kwargs={"use_reentrant": False},
     optim="paged_adamw_8bit",
     eval_strategy="steps",
     eval_steps=100,
