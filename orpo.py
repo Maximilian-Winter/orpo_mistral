@@ -59,6 +59,7 @@ model = prepare_model_for_kbit_training(model)
 tokenizer.padding_side = 'left'
 tokenizer.pad_token = tokenizer.eos_token
 tokenizer.add_eos_token = True
+model.config.pad_token_id = tokenizer.pad_token_id
 
 dataset_name = "Lumpen1/MadWiz-v1.0"
 dataset = load_dataset(dataset_name, split="all")
@@ -85,12 +86,13 @@ orpo_args = ORPOConfig(
     num_train_epochs=1,
     per_device_train_batch_size=8,
     per_device_eval_batch_size=8,
-    gradient_accumulation_steps=4,
+    gradient_accumulation_steps=8,
     optim="paged_adamw_8bit",
-    evaluation_strategy="steps",
+    eval_strategy="steps",
     eval_steps=100,
+    run_name=new_model,
     logging_steps=1,
-    save_steps=50,
+    save_steps=10,
     save_total_limit=4,
     warmup_steps=10,
     report_to="wandb",
