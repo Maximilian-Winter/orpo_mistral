@@ -14,7 +14,6 @@ from transformers import (
 )
 from trl import ORPOConfig, ORPOTrainer, setup_chat_format
 
-
 if torch.cuda.get_device_capability()[0] >= 8:
     attn_implementation = "flash_attention_2"
     torch_dtype = torch.bfloat16
@@ -24,7 +23,7 @@ else:
 
 # Model
 base_model = "mistralai/Mistral-7B-v0.3"
-new_model = "OrpoMistral-7B-v0.3"
+new_model = "MadMaxOrpoMistral-7B-v0.3"
 
 # QLoRA config
 bnb_config = BitsAndBytesConfig(
@@ -57,11 +56,7 @@ model = AutoModelForCausalLM.from_pretrained(
 model, tokenizer = setup_chat_format(model, tokenizer)
 model = prepare_model_for_kbit_training(model)
 
-model.config.use_cache = False  # silence the warnings
-model.config.pretraining_tp = 1
-model.gradient_checkpointing_enable()
-
-tokenizer.padding_side = 'right'
+tokenizer.padding_side = 'left'
 tokenizer.pad_token = tokenizer.eos_token
 tokenizer.add_eos_token = True
 
@@ -69,8 +64,8 @@ dataset_name = "Lumpen1/MadMax1.0"
 dataset = load_dataset(dataset_name, split="all")
 dataset = dataset.shuffle(seed=42)
 
+
 def format_chat_template(row):
-    row["prompt"] = tokenizer.apply_chat_template(row["prompt"], tokenize=False)
     row["chosen"] = tokenizer.apply_chat_template(row["chosen"], tokenize=False)
     row["rejected"] = tokenizer.apply_chat_template(row["rejected"], tokenize=False)
     return row
@@ -85,19 +80,18 @@ orpo_args = ORPOConfig(
     learning_rate=8e-6,
     beta=0.1,
     lr_scheduler_type="linear",
-    max_length=2048,
-    max_prompt_length=1024,
-    num_train_epochs=3,
+    max_length=4096,
+    max_prompt_length=2048,
+    num_train_epochs=1,
     per_device_train_batch_size=8,
     per_device_eval_batch_size=8,
     gradient_accumulation_steps=4,
-    gradient_checkpointing=True,
     optim="paged_adamw_8bit",
     evaluation_strategy="steps",
-    eval_steps=0.2,
+    eval_steps=100,
     logging_steps=1,
     save_steps=50,
-    save_total_limit=2,
+    save_total_limit=4,
     warmup_steps=10,
     report_to="wandb",
     output_dir="./results/",
@@ -113,7 +107,6 @@ trainer = ORPOTrainer(
 )
 trainer.train()
 trainer.save_model(new_model)
-
 
 # Flush memory
 del trainer, model
