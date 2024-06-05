@@ -61,12 +61,13 @@ tokenizer.pad_token = tokenizer.eos_token
 tokenizer.add_eos_token = True
 model.config.pad_token_id = tokenizer.pad_token_id
 
-dataset_name = "Lumpen1/MadWiz-v1.0"
+dataset_name = "Lumpen1/MadWiz-v2.0"
 dataset = load_dataset(dataset_name, split="all")
 dataset = dataset.shuffle(seed=42)
 
 
 def format_chat_template(row):
+    row["prompt"] = tokenizer.apply_chat_template(row["prompt"], tokenize=False)
     row["chosen"] = tokenizer.apply_chat_template(row["chosen"], tokenize=False)
     row["rejected"] = tokenizer.apply_chat_template(row["rejected"], tokenize=False)
     return row
@@ -87,7 +88,6 @@ orpo_args = ORPOConfig(
     per_device_train_batch_size=8,
     per_device_eval_batch_size=8,
     gradient_accumulation_steps=8,
-    gradient_checkpointing_kwargs={"use_reentrant": False},
     optim="paged_adamw_8bit",
     eval_strategy="steps",
     eval_steps=100,
@@ -130,6 +130,7 @@ model, tokenizer = setup_chat_format(model, tokenizer)
 # Merge adapter with base model
 model = PeftModel.from_pretrained(model, new_model)
 model = model.merge_and_unload()
-
+model.save_pretrained(new_model)
+tokenizer.save_pretrained(new_model)
 model.push_to_hub(new_model, use_temp_dir=False)
 tokenizer.push_to_hub(new_model, use_temp_dir=False)
