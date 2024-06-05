@@ -23,7 +23,7 @@ else:
 
 # Model
 base_model = "mistralai/Mistral-7B-v0.3"
-new_model = "MadMaxOrpoMistral-7B-v0.3"
+new_model = "MadWiz-OrpoMistral-7B-v0.3"
 
 # QLoRA config
 bnb_config = BitsAndBytesConfig(
@@ -60,7 +60,7 @@ tokenizer.padding_side = 'left'
 tokenizer.pad_token = tokenizer.eos_token
 tokenizer.add_eos_token = True
 
-dataset_name = "Lumpen1/MadMax1.0"
+dataset_name = "Lumpen1/MadWiz-v1.0"
 dataset = load_dataset(dataset_name, split="all")
 dataset = dataset.shuffle(seed=42)
 
